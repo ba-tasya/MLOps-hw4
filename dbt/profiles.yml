@@ -1,0 +1,11 @@
+fraud_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: clickhouse
+      host: localhost
+      port: 8123
+      user: dbt
+      password: dbt
+      schema: analytics
+      threads: 4

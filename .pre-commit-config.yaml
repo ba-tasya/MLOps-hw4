@@ -1,0 +1,8 @@
+repos:
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 4.1.0
+    hooks:
+      - id: sqlfluff-lint
+        files: ^dbt/(models|tests|macros)/
+      - id: sqlfluff-fix
+        files: ^dbt/(models|tests|macros)/
