@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: transactions_db
+    description: Raw transactions loaded from train.csv into ClickHouse
+    schema: transactions_db
+    tables:
+      - name: transactions
+        description: One row per card transaction with fraud label
+        columns:
+          - name: transaction_time
+            description: Transaction date and time
+          - name: amount
+            description: Transaction amount
+          - name: target
+            description: Fraud label (1 = fraud, 0 = normal)

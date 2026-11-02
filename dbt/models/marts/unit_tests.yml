@@ -1,0 +1,61 @@
+unit_tests:
+  - name: test_fraud_rate_by_category
+    description: fraud_rate is a percent of fraud transactions, rank 1 = highest fraud_rate
+    model: mart_fraud_by_category
+    given:
+      - input: ref('stg_transactions')
+        rows:
+          - {category: "travel", amount: 10, is_fraud: 1}
+          - {category: "travel", amount: 30, is_fraud: 0}
+          - {category: "travel", amount: 40, is_fraud: 0}
+          - {category: "travel", amount: 20, is_fraud: 0}
+          - {category: "home", amount: 50, is_fraud: 0}
+    expect:
+      rows:
+        - {category: "travel", tx_count: 4, fraud_count: 1, fraud_rate: 25, total_amount: 100, fraud_amount: 10, fraud_rank: 1}
+        - {category: "home", tx_count: 1, fraud_count: 0, fraud_rate: 0, total_amount: 50, fraud_amount: 0, fraud_rank: 2}
+
+  - name: test_customer_risk_segment
+    description: HIGH if fraud_rate >= 10, MEDIUM if any fraud, LOW if no fraud
+    model: mart_customer_risk_profile
+    given:
+      - input: ref('stg_transactions')
+        rows:
+          - {customer_id: "a", amount: 10, is_fraud: 1}
+          - {customer_id: "a", amount: 10, is_fraud: 0}
+          - {customer_id: "b", amount: 10, is_fraud: 0}
+    expect:
+      rows:
+        - {customer_id: "a", fraud_rate: 50, risk_segment: "HIGH"}
+        - {customer_id: "b", fraud_rate: 0, risk_segment: "LOW"}
+    
+  - name: test_high_risk_window
+    description: window is high risk if its fraud_rate is above 2x overall fraud rate
+    model: mart_hourly_fraud_pattern
+    given:
+      - input: ref('stg_transactions')
+        rows:
+          - {day_of_week: 1, transaction_hour: 3, day_name: "Monday", is_fraud: 1}
+          - {day_of_week: 1, transaction_hour: 3, day_name: "Monday", is_fraud: 0}
+          - {day_of_week: 1, transaction_hour: 12, day_name: "Monday", is_fraud: 0}
+          - {day_of_week: 1, transaction_hour: 12, day_name: "Monday", is_fraud: 0}
+          - {day_of_week: 1, transaction_hour: 12, day_name: "Monday", is_fraud: 0}
+          - {day_of_week: 1, transaction_hour: 12, day_name: "Monday", is_fraud: 0}
+    expect:
+      rows:
+        - {day_of_week: 1, transaction_hour: 3, fraud_rate: 50, is_high_risk_window: 1}
+        - {day_of_week: 1, transaction_hour: 12, fraud_rate: 0, is_high_risk_window: 0}
+
+  - name: test_daily_state_metrics
+    description: metrics are grouped by date and state, large = amount_bucket large or xlarge
+    model: mart_daily_state_metrics
+    given:
+      - input: ref('stg_transactions')
+        rows:
+          - {transaction_date: "2019-01-01", us_state: "TX", amount: 100, amount_bucket: "medium"}
+          - {transaction_date: "2019-01-01", us_state: "TX", amount: 600, amount_bucket: "large"}
+          - {transaction_date: "2019-01-01", us_state: "CA", amount: 50, amount_bucket: "small"}
+    expect:
+      rows:
+        - {transaction_date: "2019-01-01", us_state: "TX", tx_count: 2, total_amount: 700, avg_amount: 350, large_tx_share: 0.5}
+        - {transaction_date: "2019-01-01", us_state: "CA", tx_count: 1, total_amount: 50, avg_amount: 50, large_tx_share: 0}

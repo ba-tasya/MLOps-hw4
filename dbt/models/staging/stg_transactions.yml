@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: >
+      Cleaned transactions: duplicates removed, types and text normalized,
+      calendar fields and amount bucket added. One row per transaction.
+    columns:
+      - name: transaction_id
+        description: Surrogate key of the transaction (hash of all source columns)
+        data_tests:
+          - unique
+          - not_null
+      - name: customer_id
+        description: Surrogate key of the customer (name + street + post code)
+        data_tests:
+          - not_null
+      - name: transaction_time
+        description: Transaction date and time
+        data_tests:
+          - not_null
+      - name: transaction_date
+        description: Transaction date
+      - name: transaction_hour
+        description: Hour of the transaction (0-23)
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 23
+      - name: day_of_week
+        description: ISO day of week (1 = Monday, 7 = Sunday), dbt_date.day_of_week
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5, 6, 7]
+                quote: false
+      - name: day_name
+        description: Day of week name, dbt_date.day_name
+      - name: merchant
+        description: Merchant name without the "fraud_" prefix
+        data_tests:
+          - not_null
+      - name: category
+        description: Merchant category (cat_id)
+        data_tests:
+          - not_null
+      - name: amount
+        description: Transaction amount, rounded to cents
+        data_tests:
+          - dbt_expectations.expect_column_values_to_be_between:
+              arguments:
+                min_value: 0
+                strictly: true
+      - name: amount_bucket
+        description: Amount segment from the amount_bucket macro
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["micro", "small", "medium", "large", "xlarge"]
+      - name: customer_name
+        description: Customer first and last name
+      - name: gender
+        description: Customer gender
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["M", "F"]
+      - name: us_state
+        description: US state code
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('states')
+                field: state_code
+      - name: city
+        description: Customer city
+      - name: lat
+        description: Customer latitude
+      - name: lon
+        description: Customer longitude
+      - name: merchant_lat
+        description: Merchant latitude
+      - name: merchant_lon
+        description: Merchant longitude
+      - name: is_fraud
+        description: Fraud label (1 = fraud, 0 = normal)
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+                quote: false
